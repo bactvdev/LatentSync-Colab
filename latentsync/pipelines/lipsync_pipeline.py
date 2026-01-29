@@ -42,7 +42,7 @@ logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
 class LipsyncPipeline(DiffusionPipeline):
     _optional_components = []
-    model_cpu_offload_seq = "unet-vae"
+    model_cpu_offload_seq = "vae-unet"
 
     def __init__(
         self,
@@ -139,6 +139,8 @@ class LipsyncPipeline(DiffusionPipeline):
         return self.device
 
     def decode_latents(self, latents):
+        if hasattr(self.vae, "_hf_hook"):
+            self.vae.to(latents.device)
         latents = latents / self.vae.config.scaling_factor + self.vae.config.shift_factor
         latents = rearrange(latents, "b c f h w -> (b f) c h w")
         decoded_latents = self.vae.decode(latents).sample
@@ -200,6 +202,8 @@ class LipsyncPipeline(DiffusionPipeline):
         mask = torch.nn.functional.interpolate(
             mask, size=(height // self.vae_scale_factor, width // self.vae_scale_factor)
         )
+        if hasattr(self.vae, "_hf_hook"):
+            self.vae.to(device)
         masked_image = masked_image.to(device=device, dtype=dtype)
 
         # encode the mask image into latents space so we can concatenate it to the latents
@@ -221,6 +225,8 @@ class LipsyncPipeline(DiffusionPipeline):
         return mask, masked_image_latents
 
     def prepare_image_latents(self, images, device, dtype, generator, do_classifier_free_guidance):
+        if hasattr(self.vae, "_hf_hook"):
+            self.vae.to(device)
         images = images.to(device=device, dtype=dtype)
         image_latents = self.vae.encode(images).latent_dist.sample(generator=generator)
         image_latents = (image_latents - self.vae.config.shift_factor) * self.vae.config.scaling_factor
