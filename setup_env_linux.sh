@@ -5,11 +5,6 @@ export PATH="$HOME/miniconda/bin:$PATH"
 conda init bash
 source ~/.bashrc
 
-# 2. Clone code
-cd /content
-git clone https://github.com/bytedance/LatentSync.git
-cd LatentSync
-
 # 3. Tạo môi trường và cài đặt dependency (theo setup_env.sh)
 conda create -y -n latentsync python=3.10.13
 conda activate latentsync
