@@ -42,6 +42,7 @@ logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
 class LipsyncPipeline(DiffusionPipeline):
     _optional_components = []
+    model_cpu_offload_seq = "unet-vae"
 
     def __init__(
         self,
