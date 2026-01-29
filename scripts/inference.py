@@ -31,7 +31,8 @@ def main(config, args):
         raise RuntimeError(f"Audio path '{args.audio_path}' not found")
 
     # Check if the GPU supports float16
-    is_fp16_supported = torch.cuda.is_available() and torch.cuda.get_device_capability()[0] > 7
+    # Pascal (6.x) and newer support float16
+    is_fp16_supported = torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 6
     dtype = torch.float16 if is_fp16_supported else torch.float32
 
     print(f"Input video path: {args.video_path}")
@@ -71,7 +72,18 @@ def main(config, args):
         audio_encoder=audio_encoder,
         unet=unet,
         scheduler=scheduler,
-    ).to("cuda")
+    )
+
+    if args.low_vram:
+        pipeline.enable_model_cpu_offload()
+        vae.enable_slicing()
+        vae.enable_tiling()
+    elif args.extreme_low_vram:
+        pipeline.enable_sequential_cpu_offload()
+        vae.enable_slicing()
+        vae.enable_tiling()
+    else:
+        pipeline.to("cuda")
 
     # use DeepCache
     if args.enable_deepcache:
@@ -113,6 +125,8 @@ if __name__ == "__main__":
     parser.add_argument("--temp_dir", type=str, default="temp")
     parser.add_argument("--seed", type=int, default=1247)
     parser.add_argument("--enable_deepcache", action="store_true")
+    parser.add_argument("--low_vram", action="store_true", help="Enable optimizations for low VRAM (e.g., 8GB)")
+    parser.add_argument("--extreme_low_vram", action="store_true", help="Enable sequential CPU offload for extreme low VRAM")
     args = parser.parse_args()
 
     config = OmegaConf.load(args.unet_config_path)
